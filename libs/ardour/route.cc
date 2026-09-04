@@ -36,6 +36,7 @@
 #include <cmath>
 #include <cassert>
 #include <algorithm>
+#include <regex>
 
 #include <glibmm.h>
 #include <boost/algorithm/string.hpp>
@@ -5091,6 +5092,41 @@ Route::set_name (const string& str)
 
 	if (newname == name()) {
 		return true;
+	}
+
+	if (!_session.loading ()) {
+		std::regex sequence_regex ("^(.*) (\\d+)\\.\\.(\\d+)$");
+		std::smatch matches;
+		bool found = std::regex_search (str, matches, sequence_regex);
+		bool numeric = true;
+
+		if (!found) {
+			std::regex sequence_regex ("^(.*) ([[:alpha:]])\\.\\.([[:alpha:]])$");
+			found = std::regex_search (str, matches, sequence_regex);
+			numeric = false;
+		}
+
+		if (found && !matches.empty() && matches.size() == 4)
+		{
+			// loop and rename
+			std::string start (matches[2]);
+			std::string end   (matches[3]);
+			std::string (*bumpFunc)(const std::string &name);
+			bumpFunc = numeric? ARDOUR::bump_name_number : ARDOUR::bump_name_abc;
+			ARDOUR::RouteList rl = _session.get_routelist (false, _presentation_info.flags() );
+			bool renamed = true;
+//			auto r = find(rl.begin(), rl.end(), shared_from_this());
+			for ( auto r = find(rl.begin(), rl.end(), shared_from_this()); r != rl.end(); ++r )  {
+				if (start > end) break;
+				// continue until   (r == shared_from_this ())
+
+				renamed = renamed && ( (*r)->set_name (string_compose("%1 %2", matches[1], start)) );
+				start = bumpFunc (start);  // increment
+			}
+
+			return renamed;
+		}
+
 	}
 
 	SessionObject::set_name (newname);
