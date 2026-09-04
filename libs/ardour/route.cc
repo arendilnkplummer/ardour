@@ -5115,9 +5115,11 @@ Route::set_name (const string& str)
 			bumpFunc = numeric? ARDOUR::bump_name_number : ARDOUR::bump_name_abc;
 			ARDOUR::RouteList rl = _session.get_routelist (false, _presentation_info.flags() );
 			bool renamed = true;
-//			auto r = find(rl.begin(), rl.end(), shared_from_this());
+			bool at_end = false;
 			for ( auto r = find(rl.begin(), rl.end(), shared_from_this()); r != rl.end(); ++r )  {
-				if (start > end) break;
+				at_end = numeric ? (strtol(start.c_str(), NULL, 10) > strtol(end.c_str(), NULL, 10 ))
+					: (start > end);
+				if (at_end) break;
 				// continue until   (r == shared_from_this ())
 
 				renamed = renamed && ( (*r)->set_name (string_compose("%1 %2", matches[1], start)) );
