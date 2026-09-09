@@ -209,8 +209,9 @@ ARDOUR::bump_name_once (const std::string& name, char delimiter)
 }
 
 string
-ARDOUR::bump_name_number (const std::string& name)
+ARDOUR::bump_name_number (const std::string& name, bool forward)
 {
+	int direction = forward ? 1 : -1;
 	size_t pos = name.length();
 	size_t num = 0;
 	bool have_number = false;
@@ -223,7 +224,7 @@ ARDOUR::bump_name_number (const std::string& name)
 	if (have_number) {
 		int32_t seq = strtol (name.c_str() + num, (char **)NULL, 10);
 		char buf[32];
-		snprintf (buf, sizeof(buf), "%d", seq + 1);
+		snprintf (buf, sizeof(buf), "%d", seq + direction);
 		newname = name.substr (0, num);
 		newname += buf;
 	} else {
@@ -235,27 +236,34 @@ ARDOUR::bump_name_number (const std::string& name)
 }
 
 string
-ARDOUR::bump_name_abc (const std::string& name)
+ARDOUR::bump_name_abc (const std::string& name, bool forward)
 {
 	/* A, B, C, .. Z,  A1, B1, .. Z1, A2 .. Z2, A3 .. */
 	static char const* abc = _("ABCDEFGHIJKLMNOPQRSTUVWXYZ");
+	int abcLen = strlen (abc);
 	if (name.empty ()) {
 		return {abc[0]};
 	}
 
+	int direction = forward ? 1 : -1;
+
 	/* check first char */
 	char first = toupper (name[0]);
 
-	char const* end = abc + strlen (abc);
+	char const* end = abc + abcLen;
+	char const* target = forward ? abc : end;
 	char const* pos = std::find (abc, end, first);
 
 	/* first char is not in the given set. Start over */
-	if (pos == end) {
-		return {abc[0]};
+	if (pos == target) {
+		size_t startChar = forward ? 0 : (abcLen - 1);
+		return {abc[startChar]};
 	}
 
-	++pos;
-	if (pos != end) {
+//	++pos;
+	pos += direction;
+
+	if (pos != target) {
 		string rv = name;
 		rv[0] = *pos;
 		return rv;
@@ -266,7 +274,9 @@ ARDOUR::bump_name_abc (const std::string& name)
 	if (name.length () > 1) {
 		num = strtol (name.c_str() + 1, (char **)NULL, 10);
 	}
-	++num;
+
+	num += direction;
+//	++num;
 
 	return string_compose ("%1%2", abc[0], num);
 }

@@ -5104,30 +5104,34 @@ bool Route::set_name_sequence (std::string const& str)
 		else{
 			end[0] = std::toupper(end[0]);
 		}
-		if (PBD::naturally_less (start, end)) {
-			bool iter = false;
-			for (auto const& r : _session.get_routelist (false, _presentation_info.flags())) {
-				if (r == shared_from_this ()) {
-					iter = true;
-				}
-				if (!iter) {
-					continue;
-				}
-				rv &= r->set_name (string_compose("%1%2%3", matches[1], start, matches[4]));
-				if (start == end || !rv) {
-					break;
-				}
-				if (numeric) {
-					start = ARDOUR::bump_name_number (start);
-				} else {
-					start = ARDOUR::bump_name_abc (start);
-					if (isLowCase) {
-						start[0] = std::tolower(start[0]);
-					}
+		bool rightOrder = PBD::naturally_less (start, end);
+		auto rl = _session.get_routelist(false, _presentation_info.flags());
+		if (!rightOrder) {
+//			int32_t diff = numeric ? strtol(end) - strtol(start) : end[0] - start[0];
+			rl.reverse();
+		}
+		bool iter = false;
+		for (auto const& r : rl) {
+			if (r == shared_from_this ()) {
+				iter = true;
+			}
+			if (!iter) {
+				continue;
+			}
+			rv &= r->set_name (string_compose("%1%2%3", matches[1], start, matches[4]));
+			if (start == end || !rv) {
+				break;
+			}
+			if (numeric) {
+				start = ARDOUR::bump_name_number (start, rightOrder);
+			} else {
+				start = ARDOUR::bump_name_abc (start, rightOrder);
+				if (isLowCase) {
+					start[0] = std::tolower(start[0]);
 				}
 			}
-			return rv;
 		}
+		return rv;
 	}
 	return false;
 }
